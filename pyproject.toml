@@ -1,0 +1,33 @@
+[project]
+name = "distributor"
+version = "0.1.0"
+description = "Market data feed distributor; subscribes to tick sources and publishes to configured message bus"
+requires-python = ">=3.12"
+dependencies = [
+    "projectx-client @ git+https://github.com/brenham-algorithms/projectx-python.git",
+    "isort>=8.0.1",
+    "black>=26.5.1",
+    "mypy>=2.1.0",
+    "signalrcore>=1.0.2",
+]
+
+[build-system]
+requires = ["setuptools>=83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["subscribers*"]
+
+[tool.black]
+target-version = ["py312"]
+
+[tool.isort]
+profile = "black"
+
+[tool.mypy]
+python_version = "3.12"
+exclude = ["^venv/", "^\\.venv/"]
+
+[[tool.mypy.overrides]]
+module = "signalrcore.*"
+ignore_missing_imports = true
