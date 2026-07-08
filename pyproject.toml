@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Market data feed distributor; subscribes to tick sources and publishes to configured message bus"
 requires-python = ">=3.12"
 dependencies = [
-    "projectx-client @ git+ssh://git@github.com/brenham-algorithms/projectx-python.git",
+    "projectx-client @ git+https://github.com/brenham-algorithms/projectx-python.git",
     "isort>=8.0.1",
     "black>=26.5.1",
     "mypy>=2.1.0",
