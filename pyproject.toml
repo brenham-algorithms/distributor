@@ -27,7 +27,6 @@ profile = "black"
 [tool.mypy]
 python_version = "3.12"
 exclude = ["^venv/", "^\\.venv/"]
-mypy_path = "../projectx-python"
 
 [[tool.mypy.overrides]]
 module = "signalrcore.*"
