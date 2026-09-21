@@ -1,14 +1,13 @@
 import argparse
 import json
 import logging
-import redis
 import time as t
-import yaml
-
 from typing import List
-from pydantic import BaseModel
 
+import redis
+import yaml
 from projectx_client import Auth
+from pydantic import BaseModel
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 
 
@@ -103,7 +102,7 @@ class ProjectXSubscriber:
                     "UnsubscribeContractTrades",
                     [contract_id],
                 )
-                
+
             self.market_hub.stop()
             self.redis.close()
 
@@ -131,7 +130,7 @@ class ProjectXSubscriber:
     def on_trade(self, args):
         if self._stopping:
             return
-        
+
         contract_id, trades = args
 
         for trade in trades:
