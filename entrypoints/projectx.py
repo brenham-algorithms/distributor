@@ -87,7 +87,7 @@ class ProjectXSubscriber:
         self.market_hub.on_error(self._on_market_hub_error)
         self.market_hub.on("GatewayTrade", self._on_trade)
 
-        # ─── User hub (orders, positions, accounts) ───
+        # User hub
 
         self.user_hub = (
             HubConnectionBuilder()
