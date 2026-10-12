@@ -1,20 +1,26 @@
 # distributor
 
-Market data feed distributor. Subscribes to tick data sources and publishes to Redis for fan-out to multiple consumers.
+Market data and user event distributor. Subscribes to ProjectX market hub (tick data) and user hub (orders, positions, accounts) via SignalR, and publishes all events to Redis for fan-out to multiple consumers.
 
 ## Architecture
 
 ```
-Tick Sources                     Redis                    Consumers
-─────────────                    ─────                    ─────────
-ProjectX (SignalR)  ──→  ticks:{contract_id}  ──→  Farmer instances
-gRPC (future)       ──→  ticks:{contract_id}  ──→  QuestDB tick writer
-WebSocket (future)  ──→  ticks:{contract_id}  ──→  Delta monitor
+ProjectX SignalR                   Redis                         Consumers
+────────────────                   ─────                         ─────────
+Market Hub ──→ ticks:{contract_id}              ──→ Farmer instances (RedisTicker)
+User Hub   ──→ user:orders                      ──→ Order managers (position sync)
+           ──→ user:positions                   ──→ Order managers (fill confirmation)
+           ──→ user:accounts                    ──→ Balance monitoring
+           ──→ user:trades                      ──→ Trade logging
 ```
 
-Each tick source is a thin adapter that publishes a common tick message format to Redis. Consumers subscribe to the channels they care about. The tick sources and consumers are fully decoupled — adding a new source or consumer requires no changes to existing code.
+A single distributor process maintains one market hub connection and one user hub connection. All downstream consumers — multiple farmer instances, order managers, monitors — read from Redis. This works around the limitation of one SignalR connection at a time.
 
-## Tick Message Format
+## Redis Channels
+
+### Market Data
+
+Channel: `ticks:{contract_id}`
 
 ```json
 {
@@ -27,7 +33,37 @@ Each tick source is a thin adapter that publishes a common tick message format t
 }
 ```
 
-`type`: `0` = buy aggressor (lifted the ask), `1` = sell aggressor (hit the bid).
+`type`: `0` = buy aggressor, `1` = sell aggressor.
+
+### User Events
+
+Channel: `user:orders` — order lifecycle events (submitted, filled, cancelled)
+
+Channel: `user:positions` — position opened/closed/updated events
+
+Channel: `user:accounts` — account balance updates
+
+Channel: `user:trades` — trade execution events
+
+All user event payloads are the raw JSON from the ProjectX user hub.
+
+## Configuration
+
+```yaml
+projectx:
+  base_url: "https://api.topstepx.com"
+  market_hub_base_url: "https://rtc.topstepx.com/hubs/market"
+  user_hub_base_url: "https://rtc.topstepx.com/hubs/user"
+  username: "your_username"
+  api_key: "your_api_key"
+  contract_ids:
+    - "CON.F.US.MNQ.U26"
+    - "CON.F.US.CLE.U26"
+  account_ids:
+    - 12345
+  redis_host: "localhost"
+  redis_port: 6379
+```
 
 ## Setup
 
@@ -38,44 +74,35 @@ pip install setuptools
 pip install -e .
 ```
 
-Requires Python 3.12+ and a running Redis instance.
+Requires Python 3.12+ and a running Redis instance:
+
+```bash
+docker run -d --name redis -p 6379:6379 redis:latest
+```
 
 ## Usage
 
-### ProjectX SignalR Subscriber
-
 ```bash
-python entrypoints/signalr.py \
-  --base-url https://api.topstepx.com \
-  --market-hub-url https://rtc.topstepx.com/hubs/market \
-  --username your_username \
-  --api-key your_api_key \
-  --contracts CON.F.US.MNQ.U26 CON.F.US.MES.U26
+python entrypoints/projectx.py --config config.yaml --level info
 ```
 
-### Subscribing to Ticks (Consumer Example)
+Verify ticks are flowing:
 
-```python
-import json
-import redis
+```bash
+docker exec -it redis redis-cli SUBSCRIBE "ticks:CON.F.US.MNQ.U26"
+```
 
-r = redis.Redis(host="localhost", port=6379, db=0)
-pubsub = r.pubsub()
-pubsub.subscribe("ticks:CON.F.US.MNQ.U26")
+Verify user events are flowing:
 
-for message in pubsub.listen():
-    if message["type"] == "message":
-        tick = json.loads(message["data"])
-        print(f"{tick['price']} {tick['volume']} {'BUY' if tick['type'] == 0 else 'SELL'}")
+```bash
+docker exec -it redis redis-cli SUBSCRIBE "user:orders" "user:positions"
 ```
 
 ## Project Structure
 
 ```
 entrypoints/
-    signalr.py              # ProjectX SignalR → Redis
-subscribers/
-    projectx_subscriber.py  # SignalR connection and trade handling
+    projectx.py     # ProjectX SignalR (market + user hub) → Redis
 ```
 
 ## Dependencies
@@ -86,5 +113,5 @@ subscribers/
 
 ## Related Repos
 
-- [farmer](https://github.com/brenham-algorithms/farmer) — trading strategy engine (consumes ticks from Redis)
+- [farmer](https://github.com/brenham-algorithms/farmer) — trading strategy engine (consumes ticks and user events from Redis)
 - [projectx-python](https://github.com/brenham-algorithms/projectx-python) — shared ProjectX API client
