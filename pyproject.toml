@@ -19,8 +19,9 @@ dependencies = [
 requires = ["setuptools>=83.0.0"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools.packages.find]
-include = ["subscribers*"]
+# Install dependencies only; entrypoints/ holds standalone scripts, not a package
+[tool.setuptools]
+packages = []
 
 [tool.black]
 target-version = ["py312"]
