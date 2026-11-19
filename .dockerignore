@@ -1,0 +1,22 @@
+# Credentials: mount config.yaml at runtime instead
+config.yaml
+config.*.yaml
+!config.example.yaml
+
+# Local environments and build output
+venv/
+.venv/
+**/__pycache__/
+**/*.pyc
+**/.mypy_cache/
+*.egg-info/
+*.log
+repo_dump.txt
+
+# Repo and tooling
+.git/
+.github/
+.claude/
+CLAUDE.md
+Dockerfile
+.dockerignore
